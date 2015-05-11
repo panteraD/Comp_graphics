@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -36,13 +37,13 @@ Model * loadFromObj(const char *filename)
 
 
     char *line = NULL;
-    size_t linecap = 0;
+    short linecap = 0;
     int linelen;
-    while ((linelen = getline(&line, &linecap, fd)) > 0) {
+    while ((linelen = (getline(&line, &linecap, fd)) ) > 0) {
         if (!strncmp(line, "vn", 2)) {
             if (model->nnorm >= normcap) { // realloc
                 normcap *= 2;
-                model->normals = (Vec3 *)realloc(model->normals, normcap * sizeof(Vec3));
+                model->normals = (Vec3 *) realloc(model->normals, normcap * sizeof(Vec3));
                 assert(model->normals);
             }
             Vec3 *vn = &model->normals[model->nnorm];
