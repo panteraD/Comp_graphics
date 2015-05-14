@@ -1,40 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <limits.h>
 #include "model.h"
+#include "geometry.h"
 #include "tga.h"
 
 
-void swap(int *a, int *b);
-int abs(int a);
-void line (tgaImage *image, 
-           int x0, int y0,
-           int x1, int y1,
-           tgaColor color);
-void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,Vec3 *uv0,Vec3 *uv1,Vec3 *uv2, double intensity, Model *cat);
-void triangle2(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,Vec3 *uv0,Vec3 *uv1,Vec3 *uv2, double intensity, Model *cat);
+void line(tgaImage *image,
+          int x0, int y0,
+          int x1, int y1,
+          tgaColor color);
 
-Vec3 * vectorAdd3D(Vec3 *t0, Vec3 *t1, Vec3 *res) ;
+void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+              double intensity, Model *cat);
 
-Vec3 * vectorSub3D(Vec3 *t0, Vec3 *t1, Vec3 *res);
+void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+               double intensity, Model *cat);
 
-Vec3 * vectorMult3D (Vec3 *t0, Vec3 *t1, Vec3 *res);
 
-Vec3 * vectorMultSimple3D(Vec3 *t0, double a, Vec3 *res) ;
-double  vectorMultScalar (Vec3 *t0, Vec3 *t1);
-Vec3 * normalize(Vec3 * t0);
-
-void Round(Vec3 *t0);
-
-void swapVec3(Vec3 *t0, Vec3 *t1);
-void printVec3(Vec3 *t0);
-
-double  norm(Vec3 *t0);
- 
-const unsigned width = 3200;
-const unsigned int height = 3200;
-const unsigned int depth = 800;// base 255
+const unsigned width = 3800;
+const unsigned int height = 3800;
+const unsigned int depth = 255;// base 255
 
 int main(int argc, char **argv) {
 
@@ -53,6 +38,8 @@ int main(int argc, char **argv) {
     loadDiffuseMap(cat, argv[3]);
 
     Vec3 screen_coords[3];
+    Vec3 uv_coords[3];
+    Vec3 *uv[3];
     Vec3 *memory_coords[3];
     Vec3 *world_coords[3];
     //Vec3 *light_dir = getVertex(cat,rand()%1500,rand()%2);
@@ -71,16 +58,46 @@ int main(int argc, char **argv) {
         zbuffer[i] = -3000000;
     }
 
+    double c = 10;//20-30
+
+    Matrix projection = {1., 0., 0., 0.,
+                         0., 1., 0., 0.,
+                         0., 0., 1., 0.,
+                         0., 0., -1. / c, 1.};
+
+    Vec4 t,r;
+   // for(int e=0;e<100; e+=10) {
+
+
     for (int i = 0; i < cat->nface; i++) {
+        if(i==1179 || i==1188 || i==1189 || i== 2396 || i==2386 ||i==2397){
+            continue;
+        }
 
         printf("face %d of %d\n", i + 1, cat->nface);
 
         for (int j = 0; j < 3; j++) {
-            memory_coords[j] = getVertex(cat, i, j); //нужно ли 2 пременных?
+            memory_coords[j] = getVertex(cat, i, j); //нужно ли 2 пременных? //TODO:remove this
             world_coords[j] = getVertex(cat, i, j);
-            (screen_coords[j])[0] = ((*memory_coords[j])[0] + 1.0) * width / 2;
-            (screen_coords[j])[1] = ((*memory_coords[j])[1] + 1.0) * height / 2;
-            (screen_coords[j])[2] = ((*memory_coords[j])[2] + 1.0) * depth / 2;
+
+
+            transform3D4D(memory_coords[j],&t);
+            MatrixMuliply(&projection,&t,&r);
+            transform4D3D(&r,&screen_coords[j]);
+
+            (screen_coords[j])[0] = ((screen_coords[j])[0] + 1.0) * (double) (width) / 2.;
+            (screen_coords[j])[1] = ((screen_coords[j])[1] + 1.0) * (double) (height) / 2.;
+            (screen_coords[j])[2] = ((screen_coords[j])[2] + 1.0) * (double) (depth) / 2.;
+
+
+
+
+
+
+            uv[j] = getDiffuseUV(cat, i, j);
+            uv_coords[j][0] = (*uv[j])[0];
+            uv_coords[j][1] = (*uv[j])[1];
+            uv_coords[j][2] = (*uv[j])[2];
         }
         vectorSub3D(world_coords[2], world_coords[0], &left);
         vectorSub3D(world_coords[1], world_coords[0], &right);
@@ -90,20 +107,11 @@ int main(int argc, char **argv) {
 
         double intensity = vectorMultScalar(&n, &light_dir);
 
-        //printf("%f\n",intensity); //laggy comment
-
-
-
-        Vec3 *uv[3];
-        for (int k = 0; k < 3; k++) {
-            uv[k] = getDiffuseUV(cat, i, k);
-
-        }
-
 
         if (intensity > 0.0f)    // убрать
-        triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], uv[0], uv[1], uv[2],
-                 intensity, cat);
+            triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], &uv_coords[0],
+                      &uv_coords[1], &uv_coords[2],
+                      intensity, cat);
 
 
         char str[10];
@@ -142,11 +150,122 @@ int main(int argc, char **argv) {
     return rv;
 }
 
+
+//IT WORKS!
+void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+               double intensity, Model *cat) {
+    if ((*t0)[1] == (*t1)[1] && (*t0)[1] == (*t2)[1]) return;
+    if ((*t0)[1] > (*t1)[1]) {
+        swapVec3(t0, t1);
+        swapVec3(uv0, uv1);
+    }
+    if ((*t0)[1] > (*t2)[1]) {
+        swapVec3(t0, t2);
+        swapVec3(uv0, uv2);
+    }
+    if ((*t1)[1] > (*t2)[1]) {
+        swapVec3(t1, t2);
+        swapVec3(uv1, uv2);
+    }
+
+
+    double total_height = ((*t2)[1] - (*t0)[1]);
+
+    Vec3 A;
+    Vec3 B;
+    Vec3 uvA;
+    Vec3 uvB;
+
+    int p0, p1, p2;
+    for (double i = 0; i < total_height; i += 0.5) {
+        int second_half = 0; //flag
+        if (i > (*t1)[1] - (*t0)[1]) {
+            second_half = 1;
+        }
+        else if ((*t1)[1] == (*t0)[1]) {
+            second_half = 1;
+        }
+        double segment_height = second_half == 1 ? (*t2)[1] - (*t1)[1] : (*t1)[1] - (*t0)[1];
+        double alpha = i / total_height;
+
+        double beta = (i - (second_half == 1 ? (*t1)[1] - (*t0)[1] : 0)) / segment_height;
+
+
+        (vectorAdd3D(t0, vectorMultSimple3D(vectorSub3D(t2, t0, &A), alpha, &A), &A));
+
+        (second_half == 1) ? vectorAdd3D(t1, vectorMultSimple3D(vectorSub3D(t2, t1, &B), beta, &B), &B) :
+        vectorAdd3D(t0, vectorMultSimple3D(vectorSub3D(t1, t0, &B), beta, &B), &B);
+
+        vectorAdd3D(uv0, vectorMultSimple3D(vectorSub3D(uv2, uv0, &uvA), alpha, &uvA), &uvA);
+
+        (second_half == 1) ? vectorAdd3D(uv1, vectorMultSimple3D(vectorSub3D(uv2, uv1, &uvB), beta, &uvB), &uvB) :
+        vectorAdd3D(uv0, vectorMultSimple3D(vectorSub3D(uv1, uv0, &uvB), beta, &uvB), &uvB);
+
+
+        if ((A)[0] > (B)[0]) {
+            swapVec3(&A, &B);
+            swapVec3(&uvA, &uvB);
+        }
+
+
+        for (double j = (A)[0]; j <= (B)[0]; j++) {
+
+            double phi = ((B)[0] == (A)[0]) ? 1.0 : (j - A[0]) / (B[0] - A[0]);
+            Vec3 P;
+            Vec3 uP;
+            Vec3 T1, T2, uT1, uT2;
+
+
+            vectorSub3D(&B, &A, &T1);
+            //Round(&T1);
+            vectorMultSimple3D(&T1, phi, &T2);
+            //Round(&T2);
+            vectorAdd3D(&A, &T2, &P);
+            //Round(&P);
+
+            // vectorAdd3D(&uvA, vectorMultSimple3D(vectorSub3D(&uvB, &uvA, &uP), phi, &uP), &uP);
+
+            vectorSub3D(&uvB, &uvA, &uT1);
+            vectorMultSimple3D(&uT1, phi, &uT2);
+            vectorAdd3D(&uvA, &uT2, &uP);
+
+
+            p0 = P[0];
+            p1 = P[1];
+            p2 = P[2];
+
+            int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5);
+
+            if (P[2] > zbuffer[idx]) {
+                zbuffer[idx] = P[2];
+
+                tgaColor color = getDiffuseColor(cat, &uP);
+
+                tgaSetPixel(image, (int) (P[0]), (int) (P[1]),
+                            tgaRGB(Red(color) * intensity, Green(color) * intensity, Blue(color) * intensity)); //2
+                // tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
+
+            }
+
+            //сделлать единый тип double вместо float
+            //проверить алгоритм  трегольника
+            //попробовать изменить параметр depth
+            //попробовать сделать swap для указателей
+
+        }
+
+
+    }
+
+}
+
+
 //use valgrind
 //draws triangle by coordinates
-void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,Vec3 *uv0,Vec3 *uv1,Vec3 *uv2, double intensity, Model *cat) {
+void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+              double intensity, Model *cat) {
     if ((*t0)[1] == (*t1)[1] && (*t0)[1] == (*t2)[1]) return;
-    // sort the vertices, t0, t1, t2 lower-to-upper 
+    // sort the vertices, t0, t1, t2 lower-to-upper
     if ((*t0)[1] > (*t1)[1]) { swapVec3(t0, t1); }
     if ((*t0)[1] > (*t2)[1]) { swapVec3(t0, t2); }
     if ((*t1)[1] > (*t2)[1]) { swapVec3(t1, t2); }
@@ -201,7 +320,7 @@ void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,V
 
         for (int j = (A)[0]; j <= (B)[0]; j++) {
 
-            double phi = ((B)[0] == (A)[0]) ? 1.0 :  (j - A[0]) /  (B[0] - A[0]);
+            double phi = ((B)[0] == (A)[0]) ? 1.0 : (j - A[0]) / (B[0] - A[0]);
             Vec3 P;
             Vec3 uP;
             Vec3 T1, T2;
@@ -232,18 +351,18 @@ void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,V
 
 
             /*
-           
+
            //int idx = j + (p1)*width;  //3
-           
+
         //   int idx = j + (*t0)[1]*width; //spiderman
-            
+
             int idx = j + ((*t0)[1])*width; //1
-            
+
             if( p2 > zbuffer[idx] ) {
                 zbuffer[idx] = p2;
                 tgaSetPixel(image,j,(*t0)[1]+i, color); //1 хуже
-                
-            } 
+
+            }
             */
 
 
@@ -253,13 +372,16 @@ void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,V
             //2
             //int idx = p0 + (p1)*width;  //2
             int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5);
+            if(idx>3800*3800-1){
+                continue;
+            }
 
             if (P[2] > zbuffer[idx]) {
                 zbuffer[idx] = P[2];
                 tgaColor color = getDiffuseColor(cat, &uP);
 
-                // tgaSetPixel(image,p0,p1, tgaRGB( Red(color)*intensity, Green(color)*intensity, Blue(color)*intensity)); //2
-                tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
+                 tgaSetPixel(image,p0,p1, tgaRGB( Red(color)*intensity, Green(color)*intensity, Blue(color)*intensity)); //2
+                //tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
 
             }
 
@@ -271,12 +393,12 @@ void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,V
 
 
             /*
-         
+
            tgaColor color = getDiffuseColor(cat,&uP);
-                
-            tgaSetPixel(image,j,(*t0)[1]+i, tgaRGB( Red(color)*intensity, Green(color)*intensity, Blue(color)*intensity));                
+
+            tgaSetPixel(image,j,(*t0)[1]+i, tgaRGB( Red(color)*intensity, Green(color)*intensity, Blue(color)*intensity));
            //tgaSetPixel(image,j,(*t0)[1]+i, color); //simple gives pic with no artifacts without z buff
-            
+
             */
         }
 
@@ -286,227 +408,6 @@ void triangle(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,V
 }
 
 
-//IT WORKS!
-void triangle2(tgaImage *image,  double  *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,Vec3 *uv0,Vec3 *uv1,Vec3 *uv2, double intensity, Model *cat){
-    if ((*t0)[1] == (*t1)[1] && (*t0)[1] == (*t2)[1]) return;
-    // sort the vertices, t0, t1, t2 lower-to-upper
-    if ((*t0)[1] > (*t1)[1]) { swapVec3(t0, t1); }
-    if ((*t0)[1] > (*t2)[1]) { swapVec3(t0, t2); }
-    if ((*t1)[1] > (*t2)[1]) { swapVec3(t1, t2); }
-    double total_height = ((*t2)[1] - (*t0)[1]); ///???? привести?
 
 
-    Vec3 A;
-    Vec3 B;
-    Vec3 uvA;
-    Vec3 uvB;
-
-    int p0, p1, p2;
-    for (double i = 0; i < total_height; i+=0.5) {
-        int second_half = 0; //flag
-        if (i > (*t1)[1] - (*t0)[1]) {
-            second_half = 1;
-        }
-        else if ((*t1)[1] == (*t0)[1]) {
-            second_half = 1;
-        }
-        double segment_height = second_half == 1 ? (*t2)[1] - (*t1)[1] : (*t1)[1] - (*t0)[1];
-        double alpha = i /  total_height;
-
-        double beta = (i - (second_half == 1 ? (*t1)[1] - (*t0)[1] : 0)) / segment_height;
-
-        // Vec3i A = t0 + Vec3f(t2-t0)*alpha;
-        //Vec3i B = second_half ? t1 + Vec3f(t2-t1)*beta : t0 + Vec3f(t1-t0)*beta;
-        // if (A.x>B.x) std::swap(A, B);
-
-        (vectorAdd3D(t0, vectorMultSimple3D(vectorSub3D(t2, t0, &A), alpha, &A), &A));
-
-        (second_half == 1) ? vectorAdd3D(t1, vectorMultSimple3D(vectorSub3D(t2, t1, &B), beta, &B), &B) :
-        vectorAdd3D(t0, vectorMultSimple3D(vectorSub3D(t1, t0, &B), beta, &B), &B);
-
-        vectorAdd3D(uv0, vectorMultSimple3D(vectorSub3D(uv2, uv0, &uvA), alpha, &uvA), &uvA);
-        (second_half == 1) ? vectorAdd3D(uv1, vectorMultSimple3D(vectorSub3D(uv2, uv1, &uvB), beta, &uvB), &uvB) :
-                            vectorAdd3D(uv0, vectorMultSimple3D(vectorSub3D(uv1, uv0, &uvB), beta, &uvB), &uvB);
-
-
-        if ((A)[0] > (B)[0]) {
-            swapVec3(&A, &B);
-            swapVec3(&uvA, &uvB);
-        }
-
-
-        for (double j = (A)[0]; j <= (B)[0]; j++) {
-
-            double phi = ((B)[0] == (A)[0]) ? 1.0 :  (j - A[0]) /  (B[0] - A[0]);
-            Vec3 P;
-            Vec3 uP;
-            Vec3 T1, T2, uT1, uT2;
-
-
-            vectorSub3D(&B, &A, &T1);
-            //Round(&T1);
-            vectorMultSimple3D(&T1, phi, &T2);
-            //Round(&T2);
-            vectorAdd3D(&A, &T2, &P);
-            //Round(&P);
-
-            vectorAdd3D(&uvA, vectorMultSimple3D(vectorSub3D(&uvB, &uvA, &uP), phi, &uP), &uP);
-
-//            vectorSub3D(&uvB, &uvA, &uT1);
-//            vectorMultSimple3D(&T1, phi, &uT2);
-//            vectorAdd3D(&uvA,&uT2,&uP);
-
-
-            p0 = P[0];
-            p1 = P[1];
-            p2 = P[2];
-
-            int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5);
-
-            if (P[2] > zbuffer[idx]) {
-                zbuffer[idx] = P[2];
-                tgaColor color = getDiffuseColor(cat, &uP);
-
-
-
-                 tgaSetPixel(image,(int)(P[0]),(int)(P[1]), tgaRGB( Red(color)*intensity, Green(color)*intensity, Blue(color)*intensity)); //2
-               // tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
-
-            }
-
-            //сделлать единый тип double вместо float
-            //проверить алгоритм разторизапции трегольника
-            //попробовать изменить параметр depth
-
-        }
-
-
-    }
-   // printf("  %d", p2);
- }
-
-
-
-
-Vec3 * vectorAdd3D(Vec3 *t0, Vec3 *t1, Vec3 *res) {
-  
-  (*res)[0]=(*t0)[0]+(*t1)[0];
-  (*res)[1]=(*t0)[1]+(*t1)[1];
-  (*res)[2]=(*t0)[2]+(*t1)[2];
-  return res;
-}
-
-
-
-Vec3 * vectorSub3D(Vec3 *t0, Vec3 *t1, Vec3 *res) {
- // printf("sub %f \n",(*t0)[0]);//,(*t1)[0],(*res)[0]); //
-  (*res)[0]=(*t0)[0]-(*t1)[0];
-  (*res)[1]=(*t0)[1]-(*t1)[1];
-  (*res)[2]=(*t0)[2]-(*t1)[2];
-  return res;
-}
-
-
-
-
-Vec3 * vectorMultSimple3D(Vec3 *t0, double a, Vec3 *res) {
-
-  (*res)[0]=(*t0)[0]*a;
-  (*res)[1]=(*t0)[1]*a;
-  (*res)[2]=(*t0)[2]*a;
-  return res;
-}
-
-
-
-Vec3 * vectorMult3D (Vec3 *t0, Vec3 *t1, Vec3 *res) {
-    
-    (*res)[0] = (*t0)[1]*(*t1)[2]-(*t0)[2]*(*t1)[1];   //aybz-azby
-    (*res)[1] = (*t0)[2]*(*t1)[0]-(*t0)[0]*(*t1)[2];   //azbx-axbz
-    (*res)[2] = (*t0)[0]*(*t1)[1]-(*t0)[1]*(*t1)[0];   //axby-aybx
-    return res;
-}
-
-double vectorMultScalar (Vec3 *t0, Vec3 *t1) {
-  
-    return ((*t0)[0]*(*t1)[0]+(*t0)[1]*(*t1)[1]+(*t0)[2]*(*t1)[2]);
-}
-
-
-
-double  norm(Vec3 *t0){
-    return (double)sqrt((*t0)[0]*(*t0)[0]+(*t0)[1]*(*t0)[1]+(*t0)[2]*(*t0)[2]);
-    
-}
-
-
-Vec3 * normalize(Vec3 * t0) {
-       
-        double n = (double)(1.0f/norm(t0));
-        vectorMultSimple3D(t0,  n,t0 );
-        return t0;
-}
-
-
-void Round(Vec3 *t0) {
-     (*t0)[0]=(int)((*t0)[0]+0.5); 
-     (*t0)[1]=(int)((*t0)[1]+0.5);     
-     (*t0)[2]=(int)((*t0)[2]+0.5); 
-}
-
-
-
-
-void line (tgaImage *image, 
-           int x0, int y0,
-           int x1, int y1,
-           tgaColor color)
-{
-    int steep = 0;
-    if (abs(y1 - y0) > abs(x1 - x0)) {
-        steep = 1;
-        swap(&x0, &y0);
-        swap(&x1, &y1);
-    }
-
-    if (x0 > x1) {
-        swap(&x0, &x1);
-        swap(&y0, &y1);
-    }
-
-    int x;
-    double y;
-    double k = ((double)(y1 - y0))/(x1 - x0);
-    for (x = x0, y = y0; x <= x1; ++x, y += k) {
-        if (steep) {
-            tgaSetPixel(image, y, x, color);
-        } else {
-            tgaSetPixel(image, x, y, color);
-        }
-    }
-}
-
-void swap(int *a, int *b) {
-    int t = *a;
-    *a = *b;
-    *b = t;
-}
-
-void swapVec3(Vec3 *t0, Vec3 *t1){
-	double temp;
-	for(int i=0;i<3;i++){
-		temp = (*t0)[i];
-		(*t0)[i] = (*t1)[i];
-		(*t1)[i] = temp;
-	}
-}
-
-int abs(int a) {
-    return (a >= 0) ? a : -a;
-}
-
-void printVec3(Vec3 *t0){
-    printf("%f %f %f \n" ,(*t0)[0],(*t0)[1],(*t0)[2]);
-  
-}
 
