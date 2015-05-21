@@ -29,6 +29,8 @@ void printVec3(Vec3 *t0);
 
 double  norm(Vec3 *t0);
 
+Vec3 * initVec3(double x, double y, double z, Vec3 * result);
+
 
 
 
@@ -38,7 +40,8 @@ int abs(int a);
 
 Vec4  * transform3D4D(Vec3 *v3, Vec4 *v4);
 Vec3 * transform4D3D( Vec4 *v4,Vec3 *v3 );
-Vec4 * MatrixMuliply( Matrix *matrix, Vec4 *vec4, Vec4 *result);
+Vec4 *matrixMultiplyMatrixVec4(Matrix *matrix, Vec4 *vec4, Vec4 *result);
+Matrix  *matrixMultuplyMatrixMatrix(Matrix *A, Matrix *B, Matrix * result);
 Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView);
 Matrix * viewport(int x, int y, int width, int height, int depth, Matrix * viewPort);
 Matrix * transponse(Matrix *x);

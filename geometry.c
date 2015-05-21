@@ -109,6 +109,13 @@ void swapVec3(Vec3 *t0, Vec3 *t1) {
     }
 }
 
+Vec3 * initVec3(double x, double y, double z, Vec3 * result){
+    (*result)[0]=x;
+    (*result)[1]=y;
+    (*result)[2]=z;
+    return result;
+}
+
 int abs(int a) {
     return (a >= 0) ? a : -a;
 }
@@ -134,7 +141,7 @@ Vec3 *transform4D3D(Vec4 *v4, Vec3 *v3) {
     return v3;
 }
 
-Vec4 *MatrixMuliply(Matrix *matrix, Vec4 *vec4, Vec4 *result) {
+Vec4 *matrixMultiplyMatrixVec4(Matrix *matrix, Vec4 *vec4, Vec4 *result) {
     for (int i = 0; i < 4; i++) {
         double sum = 0;
         for (int j = 0; j < 4; j++) {
@@ -145,6 +152,19 @@ Vec4 *MatrixMuliply(Matrix *matrix, Vec4 *vec4, Vec4 *result) {
     return result;
 
 }
+
+Matrix  *matrixMultuplyMatrixMatrix(Matrix *A, Matrix *B, Matrix * result){
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            (*result)[j+i*4]=0.;
+            for (int k = 0; k < 4 ; ++k) {
+                (*result)[j+i*4]+=(*A)[k+i*4]*(*B)[j+k*4];
+            }
+        }
+    }
+    return result;
+}
+
 
 // ???
 Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView) {
@@ -168,7 +188,7 @@ Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView) {
         Tr[i+3*4]=-(*center)[i];
 
     }
-    MatrixMuliply(&Minv,&Tr,ModelView);
+    matrixMultiplyMatrixVec4(&Minv, &Tr, ModelView);
     return ModelView;
 
 }
@@ -193,6 +213,7 @@ Matrix *transponse(Matrix *x) {
 }
 
 //not working
+/*
 Matrix *inverse(Matrix *x) {
     Matrix result, E;
     //copy + init E
@@ -250,6 +271,7 @@ Matrix *inverse(Matrix *x) {
 
 
 }
+ */
 
 Matrix * inversion(Matrix *x, int N) {
     double temp;
