@@ -21,6 +21,7 @@ const unsigned width = 3800;
 const unsigned int height = 3800;
 const unsigned int depth = 255;// base 255
 
+//закраска фонга
 int main(int argc, char **argv) {
 
 
@@ -51,6 +52,18 @@ int main(int argc, char **argv) {
     Vec3 right;
     Vec3 n;
     printf("nfaces %d", cat->nface);
+//
+//    Matrix test = {3. , 2., 8., 5.,
+//                    11., 135., 56., 84.,
+//                    55., 9., 2., 43.,
+//                    2., 66., 8., 5., };
+
+    Matrix test = {3. , 2., 8., 5.,
+                   11., 15., 5., 8.,
+                   5., 9., 2., 3.,
+                   2., 6., 8., 5., };
+    inversion(&test,4);
+
 
     double *zbuffer = malloc(sizeof(double) * width * height); //изменить тип на short
 
@@ -66,13 +79,10 @@ int main(int argc, char **argv) {
                          0., 0., -1. / c, 1.};
 
     Vec4 t,r;
-   // for(int e=0;e<100; e+=10) {
+
 
 
     for (int i = 0; i < cat->nface; i++) {
-//        if(i==1179 || i==1188 || i==1189 || i== 2396 || i==2386 ||i==2397){
-//            continue;
-//        }
 
         printf("face %d of %d\n", i + 1, cat->nface);
 
@@ -88,10 +98,6 @@ int main(int argc, char **argv) {
             (screen_coords[j])[0] = ((screen_coords[j])[0] + 1.0) * (double) (width) / 2.;
             (screen_coords[j])[1] = ((screen_coords[j])[1] + 1.0) * (double) (height) / 2.;
             (screen_coords[j])[2] = ((screen_coords[j])[2] + 1.0) * (double) (depth) / 2.;
-
-
-
-
 
 
             uv[j] = getDiffuseUV(cat, i, j);
@@ -234,9 +240,10 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, V
             p1 = P[1];
             p2 = P[2];
 
-            int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5);
 
-            if(idx>(3800*3800-1) || idx < 0){
+            int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5); //TODO: deal with it
+
+            if (idx > (3800 * 3800 - 1) || idx < 0) {
                 continue;
             }
 

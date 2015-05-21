@@ -30,6 +30,8 @@ void printVec3(Vec3 *t0);
 double  norm(Vec3 *t0);
 
 
+
+
 void swap(int *a, int *b);
 int abs(int a);
 
@@ -37,6 +39,12 @@ int abs(int a);
 Vec4  * transform3D4D(Vec3 *v3, Vec4 *v4);
 Vec3 * transform4D3D( Vec4 *v4,Vec3 *v3 );
 Vec4 * MatrixMuliply( Matrix *matrix, Vec4 *vec4, Vec4 *result);
+Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView);
+Matrix * viewport(int x, int y, int width, int height, int depth, Matrix * viewPort);
+Matrix * transponse(Matrix *x);
+Matrix * inverse(Matrix *x);
+Matrix * inversion(Matrix *x, int N);
+Matrix * identity(Matrix *x);
 
 
 #endif //COMP_GRAPHICS_GEOMETRY_H
