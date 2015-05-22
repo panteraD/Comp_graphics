@@ -15,8 +15,8 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, V
                double intensity, Model *cat);
 
 
-const unsigned width = 1000;
-const unsigned int height = 1000;
+const unsigned width = 3800;
+const unsigned int height = 3800;
 const unsigned int depth = 255;// base 255
 
 //закраска фонга
@@ -47,19 +47,6 @@ int main(int argc, char **argv) {
     Vec3 right;
     Vec3 n;
 
-    /*
-//    Matrix test = {3. , 2., 8., 5.,
-//                    11., 135., 56., 84.,
-//                    55., 9., 2., 43.,
-//                    2., 66., 8., 5., };
-
-//    Matrix test = {3., 2., 8., 5.,
-//                   11., 15., 5., 8.,
-//                   5., 9., 2., 3.,
-//                   2., 6., 8., 5.,};
-//    inversion(&test, 4);
-     */
-
 
     double *zbuffer = malloc(sizeof(double) * width * height); //изменить тип на short
 
@@ -79,33 +66,13 @@ int main(int argc, char **argv) {
      */
 
     Vec3 light_dir, eye, center;
-    //initVec3(0., 0., -1., &light_dir);
-    initVec3(1., -1., 1., &light_dir);
+    initVec3(0., 0., -1., &light_dir);
+    // initVec3(1., -1., 1., &light_dir);
     normalize(&light_dir);
 
     initVec3(1., 1., 3., &eye);
 
     initVec3(0., 0., 0., &center);
-
-    /*
-    Matrix A = {1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.};
-    Matrix B = {10., 20., 30., 40., 50., 60., 70., 80., 90., 100., 110., 120., 130., 140., 150., 160.};
-    Matrix C;
-    matrixMultuplyMatrixMatrix(&A, &B, &C);
-     */
-
-    /*
-     *      Matrix ModelView  = lookat(eye, center, Vec3f(0,1,0));
-            Matrix Projection = Matrix::identity(4);
-            Matrix ViewPort   = viewport(width/8, height/8, width*3/4, height*3/4);
-            Projection[3][2] = -1.f/(eye-center).norm();
-
-            std::cerr << ModelView << std::endl;
-            std::cerr << Projection << std::endl;
-            std::cerr << ViewPort << std::endl;
-            Matrix z = (ViewPort*Projection*ModelView);
-            std::cerr << z << std::endl;
-     */
 
 
     Matrix ModelView;
@@ -121,16 +88,14 @@ int main(int argc, char **argv) {
     vectorSub3D(&eye, &center, &temp2);
 
     double dd = norm(&temp2);
-    projection[2 + 3 * 4] = -1. /dd;
-
+    projection[2 + 3 * 4] = -1. / dd;
 
 
     Matrix ViewPort;
     viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4, depth, &ViewPort);
 
-    Vec4 tttt,rrrr;
+    Vec4 tttt, rrrr;
 
-    omp_set_num_threads(4);
 
     //#pragma omp parallel for
     for (int i = 0; i < model->nface; i++) {
@@ -141,30 +106,15 @@ int main(int argc, char **argv) {
             memory_coords[j] = getVertex(model, i, j); //нужно ли 2 пременных? //TODO:remove this
             world_coords[j] = getVertex(model, i, j);
 
-            // версия перспективного искажения
 
-            transform3D4D(memory_coords[j], &tttt);
-            matrixMultiplyMatrixVec4(&projection, &tttt, &rrrr);
-            transform4D3D(&rrrr, &screen_coords[j]);
+            Vec4 mv, mv2;
+            transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
+            Matrix matrix, matrix2;
+            matrixMultuplyMatrixMatrix(&ViewPort, &projection, &matrix);
+            matrixMultuplyMatrixMatrix(&matrix, &ModelView, &matrix2);
+            matrixMultiplyMatrixVec4(&matrix2, &mv, &mv2);
+            transform4D3D(&mv2, &screen_coords[j]);
 
-
-
-
-            //IN CIRCLE:screen_coords[j] =  Vec3f(ViewPort*Projection*ModelView*Matrix(v));
-
-//            Vec4 mv, mv2;
-//            transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
-//            Matrix matrix, matrix2;
-//            matrixMultuplyMatrixMatrix(&ViewPort, &projection, &matrix);
-//            matrixMultuplyMatrixMatrix(&matrix, &ModelView, &matrix2);
-//            matrixMultiplyMatrixVec4(&matrix2, &mv, &mv2);
-//            transform4D3D(&mv2, &screen_coords[j]);
-
-
-
-            (screen_coords[j])[0] = ((screen_coords[j])[0] + 1.0) * (double) (width) / 2.;
-            (screen_coords[j])[1] = ((screen_coords[j])[1] + 1.0) * (double) (height) / 2.;
-            (screen_coords[j])[2] = ((screen_coords[j])[2] + 1.0) * (double) (depth) / 2.;
 
             printVec3(&screen_coords[j]);
 
@@ -182,10 +132,10 @@ int main(int argc, char **argv) {
         double intensity = vectorMultScalar(&n, &light_dir);
 
 
-        // if (intensity > 0.0f)    // убрать
-        triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], &uv_coords[0],
-                  &uv_coords[1], &uv_coords[2],
-                  intensity, model);
+        if (intensity > 0.0f)    // убрать
+            triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], &uv_coords[0],
+                      &uv_coords[1], &uv_coords[2],
+                      intensity, model);
 
 
         char str[10];
@@ -323,7 +273,7 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, V
 
                 tgaSetPixel(image, (int) (P[0]), (int) (P[1]),
                             tgaRGB(Red(color) * intensity, Green(color) * intensity, Blue(color) * intensity)); //2
-                // tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
+//                 tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
 
             }
 

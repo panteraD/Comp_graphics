@@ -297,13 +297,13 @@ Matrix * identity(Matrix *x){
 
 Matrix * viewport(int x, int y, int width, int height, int depth, Matrix * viewPort){
     identity(viewPort);
-    (*viewPort[3+0*4])=x+width/2.;
-    (*viewPort[3+1*4])=y+height/2.;
-    (*viewPort[3+2*4])=depth/2.;
+    (*viewPort)[3+0*4]=x+width/2.;
+    (*viewPort)[3+1*4]=y+height/2.;
+    (*viewPort)[3+2*4]=depth/2.;
 
-    (*viewPort[0+0*4])=width/2.;
-    (*viewPort[1+1*4])=height/2.;
-    (*viewPort[2+2*4])=depth/2.f;
+    (*viewPort)[0+0*4]=width/2.;
+    (*viewPort)[1+1*4]=height/2.;
+    (*viewPort)[2+2*4]=depth/2.f;
 
     return viewPort;
 }
