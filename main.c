@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "model.h"
 #include "geometry.h"
-#include "tga.h"
+#include <omp.h>
 
 
 void line(tgaImage *image,
@@ -15,8 +15,8 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, V
                double intensity, Model *cat);
 
 
-const unsigned width = 3800;
-const unsigned int height = 3800;
+const unsigned width = 1000;
+const unsigned int height = 1000;
 const unsigned int depth = 255;// base 255
 
 //закраска фонга
@@ -31,10 +31,10 @@ int main(int argc, char **argv) {
         return -1;
     }
     tgaImage *image = tgaNewImage(width, height, RGB);
-    //читаем файл с модели
 
-    Model *cat = loadFromObj(argv[2]);
-    loadDiffuseMap(cat, argv[3]);
+
+    Model *model = loadFromObj(argv[2]);
+    loadDiffuseMap(model, argv[3]);
 
     Vec3 screen_coords[3];
     Vec3 uv_coords[3];
@@ -46,7 +46,6 @@ int main(int argc, char **argv) {
     Vec3 left;
     Vec3 right;
     Vec3 n;
-    printf("nfaces %d", cat->nface);
 
     /*
 //    Matrix test = {3. , 2., 8., 5.,
@@ -115,66 +114,61 @@ int main(int argc, char **argv) {
     lookAt(&eye, &center, &up, &ModelView);
 
 
-    Matrix projection = {1., 0., 0., 0.,
-                         0., 1., 0., 0.,
-                         0., 0., 1., 0.,
-                         0., 0., -1. / c, 1.};
+    Matrix projection;
+    identity(&projection);
+
     Vec3 temp2;
     vectorSub3D(&eye, &center, &temp2);
-    projection[2 + 3 * 4] = -1. / norm(&temp2);
+
+    double dd = norm(&temp2);
+    projection[2 + 3 * 4] = -1. /dd;
+
 
 
     Matrix ViewPort;
     viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4, depth, &ViewPort);
 
+    Vec4 tttt,rrrr;
 
-    for (int i = 0; i < cat->nface; i++) {
+    omp_set_num_threads(4);
 
-        printf("face %d of %d\n", i + 1, cat->nface);
+    //#pragma omp parallel for
+    for (int i = 0; i < model->nface; i++) {
+
+        printf("face %d of %d\n", i + 1, model->nface);
 
         for (int j = 0; j < 3; j++) {
-            memory_coords[j] = getVertex(cat, i, j); //нужно ли 2 пременных? //TODO:remove this
-            world_coords[j] = getVertex(cat, i, j);
+            memory_coords[j] = getVertex(model, i, j); //нужно ли 2 пременных? //TODO:remove this
+            world_coords[j] = getVertex(model, i, j);
 
-            /* версия перспективного искажения
+            // версия перспективного искажения
+
             transform3D4D(memory_coords[j], &tttt);
             matrixMultiplyMatrixVec4(&projection, &tttt, &rrrr);
             transform4D3D(&rrrr, &screen_coords[j]);
-             */
+
+
 
 
             //IN CIRCLE:screen_coords[j] =  Vec3f(ViewPort*Projection*ModelView*Matrix(v));
 
-            Vec4 mv, mv2;
-            transform3D4D(&memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
-            Matrix matrix, matrix2;
-            matrixMultuplyMatrixMatrix(&ViewPort, &projection, &matrix);
-            matrixMultuplyMatrixMatrix(&matrix, &ModelView, &matrix2);
-            matrixMultiplyMatrixVec4(&matrix2, &mv, &mv2);
-            transform4D3D(&mv2, &screen_coords[j]);
+//            Vec4 mv, mv2;
+//            transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
+//            Matrix matrix, matrix2;
+//            matrixMultuplyMatrixMatrix(&ViewPort, &projection, &matrix);
+//            matrixMultuplyMatrixMatrix(&matrix, &ModelView, &matrix2);
+//            matrixMultiplyMatrixVec4(&matrix2, &mv, &mv2);
+//            transform4D3D(&mv2, &screen_coords[j]);
 
 
 
-            /*
-
-
-
-             PROGRAM VARIABLES:
-             Vec3f light_dir = Vec3f(1,-1,1).normalize();
-             Vec3f eye(1,1,3);
-             Vec3f center(0,0,0);
-
-             */
-
-
-            /*
             (screen_coords[j])[0] = ((screen_coords[j])[0] + 1.0) * (double) (width) / 2.;
             (screen_coords[j])[1] = ((screen_coords[j])[1] + 1.0) * (double) (height) / 2.;
             (screen_coords[j])[2] = ((screen_coords[j])[2] + 1.0) * (double) (depth) / 2.;
-             */
 
+            printVec3(&screen_coords[j]);
 
-            uv[j] = getDiffuseUV(cat, i, j);
+            uv[j] = getDiffuseUV(model, i, j);
             uv_coords[j][0] = (*uv[j])[0];
             uv_coords[j][1] = (*uv[j])[1];
             uv_coords[j][2] = (*uv[j])[2];
@@ -191,7 +185,7 @@ int main(int argc, char **argv) {
         // if (intensity > 0.0f)    // убрать
         triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], &uv_coords[0],
                   &uv_coords[1], &uv_coords[2],
-                  intensity, cat);
+                  intensity, model);
 
 
         char str[10];
@@ -325,6 +319,7 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, V
                 zbuffer[idx] = P[2];
 
                 tgaColor color = getDiffuseColor(cat, &uP);
+
 
                 tgaSetPixel(image, (int) (P[0]), (int) (P[1]),
                             tgaRGB(Red(color) * intensity, Green(color) * intensity, Blue(color) * intensity)); //2

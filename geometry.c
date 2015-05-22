@@ -45,14 +45,14 @@ double vectorMultScalar(Vec3 *t0, Vec3 *t1) {
 
 
 double norm(Vec3 *t0) {
-    return (double) sqrt((*t0)[0] * (*t0)[0] + (*t0)[1] * (*t0)[1] + (*t0)[2] * (*t0)[2]);
+    return  sqrt((*t0)[0] * (*t0)[0] + (*t0)[1] * (*t0)[1] + (*t0)[2] * (*t0)[2]);
 
 }
 
 
 Vec3 *normalize(Vec3 *t0) {
 
-    double n = (double) (1.0f / norm(t0));
+    double n =  (1.0 / norm(t0));
     vectorMultSimple3D(t0, n, t0);
     return t0;
 }
@@ -177,6 +177,7 @@ Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView) {
     Vec3 y;
     vectorMult3D(&z, &x, &y);
     normalize(&y);
+
     Matrix Minv;
     identity(&Minv);
     Matrix Tr;
@@ -185,10 +186,10 @@ Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView) {
         Minv[i+0*4]= x[i];
         Minv[i+1*4]= y[i];
         Minv[i+2*4]= z[i];
-        Tr[i+3*4]=-(*center)[i];
+        Tr[3+i*4]=-(*center)[i]; //fiex
 
     }
-    matrixMultiplyMatrixVec4(&Minv, &Tr, ModelView);
+    matrixMultuplyMatrixMatrix(&Minv, &Tr, ModelView);
     return ModelView;
 
 }
@@ -212,66 +213,6 @@ Matrix *transponse(Matrix *x) {
 
 }
 
-//not working
-/*
-Matrix *inverse(Matrix *x) {
-    Matrix result, E;
-    //copy + init E
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            result[j + i * 4] = (*x)[j + i * 4];
-            if (i == j) {
-                E[j + i * 4] = 1.;
-            }
-            else {
-                E[j + i * 4] = 0.;
-            }
-        }
-    }
-    //fp
-    for (int i = 0; i < 3; i++) {
-
-        for (int j = 0; j < 4; j++) {
-            result[j + i * 4] /= result[i + i * 4];
-            E[j + i * 4] /= result[i + i * 4];
-        }
-
-        for (int k = i + 1; k < 4; k++) {
-            double coeff = result[i + k * 4];
-            for (int j = 0; j < 4; j++) {
-                result[j + k * 4] -= result[j + i * 4] * coeff;
-                E[j + k * 4] -= E[j + i * 4] * coeff;
-            }
-        }
-        //normalize
-        for (int l = 0; l < 4; ++l) {
-            E[l + 3 * 4] /= result[3 + 3 * 4];
-        }
-
-        //second pass
-        for (int i = 3; i > 0; i--) {
-            for (int k = i - 1; k >= 0; k--) {
-                double c = result[i + k * 4];
-                for (int j = 0; j < 4; j++) {
-                    result[j + k * 4] -= result[j + i * 4] * c;
-                    E[j + k * 4] -= E[j + i * 4] * c;
-                }
-            }
-        }
-
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                (*x)[j + i * 4] = E[j + i * 4];
-            }
-        }
-        return x;
-
-
-    }
-
-
-}
- */
 
 Matrix * inversion(Matrix *x, int N) {
     double temp;
