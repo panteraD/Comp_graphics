@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="head" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="head.tga /home/andrey/Comp_graphics/head/african_head.obj /home/andrey/Comp_graphics/head/african_head_diffuse.tga /home/andrey/Comp_graphics/head/african_head_nm.tga" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS="FALSE" PROJECT_NAME="Comp_graphics" TARGET_NAME="render" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Comp_graphics" RUN_TARGET_NAME="render">
+    <envs />
+    <method />
+  </configuration>
+</component>

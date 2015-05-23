@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="cat" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="cat.tga /home/andrey/Comp_graphics/cat/cat.obj /home/andrey/Comp_graphics/cat/cat_diff.tga /home/andrey/Comp_graphics/cat/cat_norm.tga" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS="FALSE" PROJECT_NAME="Comp_graphics" TARGET_NAME="render" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Comp_graphics" RUN_TARGET_NAME="render">
+    <envs />
+    <method />
+  </configuration>
+</component>

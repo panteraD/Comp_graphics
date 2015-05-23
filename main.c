@@ -5,16 +5,15 @@
 #include <omp.h>
 
 
-
-void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
-               double intensity,Vec3 * inten, Vec3 * light_dir, Model *cat);
+void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+              Vec3 *inten, Vec3 *light_dir, Model *cat);
 
 
 const unsigned width = 3800;
 const unsigned int height = 3800;
-const unsigned int depth = 255;// base 255
+const unsigned int depth = 255;
 
-//закраска фонга
+
 int main(int argc, char **argv) {
 
 
@@ -30,7 +29,7 @@ int main(int argc, char **argv) {
 
     Model *model = loadFromObj(argv[2]);
     loadDiffuseMap(model, argv[3]);
-    loadNormalMap(model,argv[4]);
+    loadNormalMap(model, argv[4]);
 
 
     Vec3 screen_coords[3];
@@ -39,10 +38,13 @@ int main(int argc, char **argv) {
     Vec3 *memory_coords[3];
     Vec3 *intensive[3];
 
-    //плоская освещенность
-    Vec3 left;
-    Vec3 right;
-    Vec3 n;
+    /*
+    for(unsigned int i=0; i< width;i++){
+        for(unsigned int j = 0; j< height; j++){
+            tgaSetPixel(image, i, j, tgaRGB(128 , 128 , 128 ));
+        }
+    }
+     */
 
 
     double *zbuffer = malloc(sizeof(double) * width * height); //изменить тип на short
@@ -54,8 +56,14 @@ int main(int argc, char **argv) {
 
     Vec3 light_dir, eye, center;
 
-    initVec3(0., 0., 1., &light_dir);
-    //initVec3(1., -1., 1., &light_dir);
+    Vec3 light1, light2;
+    initVec3(0., 0., 1, &light1);
+    initVec3(0., -0., 0., &light2);
+    vectorAdd3D(&light1, &light2, &light_dir);
+
+
+    // initVec3(0., 0., 1., &light_dir);
+    //  initVec3(1., -1., 1., &light_dir);
     normalize(&light_dir);
 
     initVec3(1., 1., 3., &eye);
@@ -71,25 +79,32 @@ int main(int argc, char **argv) {
     Matrix projection;
     identity(&projection);
 
-    Vec3 temp2;
-    vectorSub3D(&eye, &center, &temp2);
+    Vec3 C;
+    vectorSub3D(&eye, &center, &C);
 
-    double dd = norm(&temp2);
+    double dd = norm(&C);
     projection[2 + 3 * 4] = -1. / dd;
 
 
     Matrix ViewPort;
     viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4, depth, &ViewPort);
 
+    Matrix M, temp; // camera transformation
+    matrixMultuplyMatrixMatrix(&ViewPort, &projection, &temp);
+    matrixMultuplyMatrixMatrix(&temp, &ModelView, &M);
 
 
 
 
-    //#pragma omp parallel for
+
+
+    // #pragma omp parallel for
+    // #pragma omp for
+#pragma omp  for
     for (int i = 0; i < model->nface; i++) {
 
         printf("face %d of %d\n", i + 1, model->nface);
-        Vec3 inten,sv;
+        Vec3 inten, sv;
 
 
         for (int j = 0; j < 3; j++) {
@@ -99,7 +114,9 @@ int main(int argc, char **argv) {
             /*
              * Vec3f n = (world_coords[1] - world_coords[0]) ^ (world_coords[2] - world_coords[0]); // поменять местами множители
                 n.normalize();
+                освященность?
              */
+
             /*
             (screen_coords[j])[0] = ((*memory_coords[j])[0] + 1.0) * width / 2;
             (screen_coords[j])[1] = ((*memory_coords[j])[1] + 1.0) * height / 2;
@@ -110,15 +127,8 @@ int main(int argc, char **argv) {
             //преобразования для поворта камеры
             Vec4 mv, mv2;
             transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
-            Matrix matrix, matrix2; //вынести эти 3 строки
-            matrixMultuplyMatrixMatrix(&ViewPort, &projection, &matrix);
-            matrixMultuplyMatrixMatrix(&matrix, &ModelView, &matrix2);
-            matrixMultiplyMatrixVec4(&matrix2, &mv, &mv2);
+            matrixMultiplyMatrixVec4(&M, &mv, &mv2);
             transform4D3D(&mv2, &screen_coords[j]);
-            //
-
-
-
 
             //printVec3(&screen_coords[j]);
 
@@ -129,20 +139,19 @@ int main(int argc, char **argv) {
 
 
             /*
-            //преобразовния нормалей
+            //преобразовния нормалей для тонировки Гуро
+            //normals transforamtions for Gourand
             intensive[j]=getNorm(model, i,j);
-//            sv[0]=-(*intensive)[j][0];
-//            sv[1]=-(*intensive)[j][1];
-//            sv[2]=-(*intensive)[j][2];
-            sv[0]=(*intensive)[j][0];
-            sv[1]=(*intensive)[j][1];
-            sv[2]=(*intensive)[j][2];
+            sv[0]=-(*intensive)[j][0];
+            sv[1]=-(*intensive)[j][1];
+            sv[2]=-(*intensive)[j][2];
 
-            Vec4 temp, temp3;
+
+            Vec4 C, temp3;
             transform3D4D(&sv, &temp);
             temp[3]=0;
             Matrix M1;
-            clone(&matrix2,&M1);
+            clone(&M,&M1);
             transponse(&M1);
             inversion(&M1);
             matrixMultiplyMatrixVec4(&M1,&temp,&temp3);
@@ -151,25 +160,15 @@ int main(int argc, char **argv) {
             normalize(&sv);
 
 
-
-
             inten[j]=vectorMultScalar(&sv,&light_dir);
              */
 
         }
-        vectorSub3D(memory_coords[2], memory_coords[0], &left);
-        vectorSub3D(memory_coords[1], memory_coords[0], &right);
-        vectorMult3D(&left, &right, &n);
-
-        normalize(&n);
-
-        double intensity = vectorMultScalar(&n, &light_dir);
 
 
-       // if (intensity > 0.)    // убрать
-            triangle2(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2], &uv_coords[0],
-                      &uv_coords[1], &uv_coords[2],
-                      intensity,&inten, &light_dir, model);
+        triangle(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2],
+                 &uv_coords[0], &uv_coords[1], &uv_coords[2],
+                 &inten, &light_dir, model);
 
 
         char str[10];
@@ -181,6 +180,7 @@ int main(int argc, char **argv) {
 
 
     }
+#pragma omp barrier
 
 
     tgaFlipVertically(image);
@@ -209,10 +209,9 @@ int main(int argc, char **argv) {
 }
 
 
-//IT WORKS!
-void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
-                                                 Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
-               double intensity, Vec3 * intnen, Vec3 * light_dir,Model *cat) {
+void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
+              Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
+              Vec3 *intnen, Vec3 *light_dir, Model *cat) {
     if ((*t0)[1] == (*t1)[1] && (*t0)[1] == (*t2)[1]) return;
     if ((*t0)[1] > (*t1)[1]) {
         swapVec3(t0, t1);
@@ -235,7 +234,7 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
     Vec3 uvA;
     Vec3 uvB;
 
-    int p0, p1, p2;
+    int p0, p1;
     for (double i = 0; i < total_height; i += 0.5) {
         int second_half = 0; //flag
         if (i > (*t1)[1] - (*t0)[1]) {
@@ -260,14 +259,16 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
         (second_half == 1) ? vectorAdd3D(uv1, vectorMultSimple3D(vectorSub3D(uv2, uv1, &uvB), beta, &uvB), &uvB) :
         vectorAdd3D(uv0, vectorMultSimple3D(vectorSub3D(uv1, uv0, &uvB), beta, &uvB), &uvB);
 
-        double ityA =               (*intnen)[0] +   ((*intnen)[2]-(*intnen)[0])*alpha;
-        double ityB = second_half ? (*intnen)[1] +   ((*intnen)[2]-(*intnen)[1])*beta : (*intnen)[1] +   ((*intnen)[1]-(*intnen)[2])*beta;
+        double ityA = (*intnen)[0] + ((*intnen)[2] - (*intnen)[0]) * alpha;
+        double ityB = second_half ?
+                      (*intnen)[1] + ((*intnen)[2] - (*intnen)[1]) * beta :
+                      (*intnen)[1] + ((*intnen)[1] - (*intnen)[2]) * beta;
 
 
         if ((A)[0] > (B)[0]) {
             swapVec3(&A, &B);
             swapVec3(&uvA, &uvB);
-            swapD(&ityA,&ityB);
+            swapD(&ityA, &ityB);
         }
 
 
@@ -292,12 +293,11 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
             vectorAdd3D(&uvA, &uT2, &uP);
 
             //гуро
-            double ityP = ityA + (ityB-ityA)*phi;
+            double ityP = ityA + (ityB - ityA) * phi;
 
 
             p0 = P[0];
             p1 = P[1];
-            p2 = P[2];
 
 
             int idx = (int) (p0 + 0.5) + (int) ((p1) * width + 0.5); //TODO: deal with it
@@ -309,52 +309,45 @@ void triangle2(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
             if (P[2] > zbuffer[idx]) {
                 zbuffer[idx] = P[2];
 
-                tgaColor color = getDiffuseColor(cat, &uP);
+                tgaColor color;
+#pragma omp critical
+                {
+                    color = getDiffuseColor(cat, &uP);
+                }
 
                 Vec3 n;
-                getNormal(cat,&n,&uP);
+
+#pragma omp critical
+                {
+                    getNormal(cat, &n, &uP);
+                }
                 normalize(&n);
-                n[0]*=-1;
-                n[1]*=-1;
-                n[2]*=-1;
-                double ityFhong=vectorMultScalar(&n,&light_dir);
-                if(ityFhong<0.)
+                n[0] *= -1;
+                n[1] *= -1;
+                n[2] *= -1;
+                double ityFhong = vectorMultScalar(&n, light_dir);  //?
+                if (ityFhong < 0.)
                     ityFhong = 0.;
 
 
-
-              //tgaSetPixel(image, (int) (P[0]), (int) (P[1]), tgaRGB(Red(color) * intensity, Green(color) * intensity, Blue(color) * intensity)); //texture
-              // tgaSetPixel(image, p0, p1, tgaRGB(255 * intensity, 255 * intensity, 255 * intensity)); //2
-
                 //tgaSetPixel(image, p0, p1, tgaRGB(255 * ityP, 255 * ityP, 255 * ityP)); //Gourad
-               // tgaSetPixel(image, p0, p1, tgaRGB(255 * ityFhong, 255 * ityFhong, 255 * ityFhong));//Phong
-                tgaSetPixel(image, (int) (P[0]), (int) (P[1]), tgaRGB(Red(color) * ityFhong, Green(color) * ityFhong, Blue(color) * ityFhong)); //Phong text
+
+                // tgaSetPixel(image, p0, p1, tgaRGB(255 * ityFhong, 255 * ityFhong, 255 * ityFhong));//Phong
+
+                double lightHack = 5.;
+
+                tgaSetPixel(image, p0, p1,
+                            tgaRGB(Red(color) * ityFhong + lightHack, Green(color) * ityFhong + lightHack,
+                                   Blue(color) * ityFhong + lightHack)); //Phong text , +0.5 more light hack
+
+                /*tgaSetPixel(image, p0, p1, tgaRGB(Red(color) * ityFhong, Green(color) * ityFhong,
+                                                  Blue(color) * ityFhong)); //Phong text , les light
+                                                  */
 
 
             }
 
-            /*
-             * Vec2f uvP = uvA + (uvB - uvA) * phi;
-				int u = int(uvP.x * diffuse.get_width());
-				int v = int(uvP.y * diffuse.get_height());
-				TGAColor nCol = normals.get(u, v);
-				Vec3f nP = { static_cast<float>(nCol.r - 128), static_cast<float>(nCol.g - 128), static_cast<float>(nCol.b - 128) };
-				nP.normalize();
-				nP = nP * -1.0f;
-				float intensity = std::max(0.0f, nP * lightDir);
-				TGAColor color = diffuse.get(u, v);
-				color = { (unsigned char)(color.r * intensity + 0.5),
-					(unsigned char)(color.g * intensity + 0.5),
-					(unsigned char)(color.b * intensity + 0.5),
-					color.a };
-				//color = { (unsigned char)(255 * intensity), (unsigned char)(255 * intensity), (unsigned char)(255 * intensity), color.a };
-				image.set(p.x, p.y, color);
-             */
-
-
-
         }
-
 
     }
 
