@@ -100,6 +100,12 @@ void swap(int *a, int *b) {
     *b = t;
 }
 
+void swapD(double *a, double *b) {
+    double t = *a;
+    *a = *b;
+    *b = t;
+}
+
 void swapVec3(Vec3 *t0, Vec3 *t1) {
     double temp;
     for (int i = 0; i < 3; i++) {
@@ -214,7 +220,7 @@ Matrix *transponse(Matrix *x) {
 }
 
 
-Matrix * inversion(Matrix *x, int N) {
+Matrix * inversion(Matrix *x) {
     double temp;
     //TODO add proffs
     Matrix E, result;
@@ -233,7 +239,7 @@ Matrix * inversion(Matrix *x, int N) {
     }
 
 
-    for (int k = 0; k < N; k++)
+    for (int k = 0; k < 4; k++)
     {
         temp = result[k+k*4];
 
@@ -243,11 +249,11 @@ Matrix * inversion(Matrix *x, int N) {
             E[j+k*4] /= temp;
         }
 
-        for (int i = k + 1; i < N; i++)
+        for (int i = k + 1; i < 4; i++)
         {
             temp = result[k+i*4];
 
-            for (int j = 0; j < N; j++)
+            for (int j = 0; j < 4; j++)
             {
                 result[j+i*4] -= result[j+k*4] * temp;
                 E[j+i*4] -= E[j+k*4] * temp;
@@ -255,13 +261,13 @@ Matrix * inversion(Matrix *x, int N) {
         }
     }
 
-    for (int k = N - 1; k > 0; k--)
+    for (int k = 4 - 1; k > 0; k--)
     {
         for (int i = k - 1; i >= 0; i--)
         {
             temp = result[k+i*4];
 
-            for (int j = 0; j < N; j++)
+            for (int j = 0; j < 4; j++)
             {
                 result[j+i*4] -= result[j+k*4] * temp;
                 E[j+i*4] -= E[j+k*4] * temp;
@@ -292,6 +298,19 @@ Matrix * identity(Matrix *x){
         }
     }
     return x;
+
+}
+
+Matrix * clone(Matrix *x, Matrix *y){
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+
+            (*y)[j + i * 4] = (*x)[j + i * 4];
+
+        }
+    }
+    return y;
 
 }
 

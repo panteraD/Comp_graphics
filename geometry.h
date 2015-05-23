@@ -35,6 +35,7 @@ Vec3 * initVec3(double x, double y, double z, Vec3 * result);
 
 
 void swap(int *a, int *b);
+void swapD(double *a, double *b);
 int abs(int a);
 
 
@@ -45,9 +46,9 @@ Matrix  *matrixMultuplyMatrixMatrix(Matrix *A, Matrix *B, Matrix * result);
 Matrix * lookAt(Vec3 *eye, Vec3 *center, Vec3 *up, Matrix *ModelView);
 Matrix * viewport(int x, int y, int width, int height, int depth, Matrix * viewPort);
 Matrix * transponse(Matrix *x);
-Matrix * inverse(Matrix *x);
-Matrix * inversion(Matrix *x, int N);
+Matrix * inversion(Matrix *x);
 Matrix * identity(Matrix *x);
+Matrix * clone(Matrix *x, Matrix *y);
 
 
 #endif //COMP_GRAPHICS_GEOMETRY_H
