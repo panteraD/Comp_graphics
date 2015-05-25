@@ -3,18 +3,20 @@
 #include "model.h"
 #include "geometry.h"
 #include <omp.h>
+#include <time.h>
 
 
 void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2, Vec3 *uv0, Vec3 *uv1, Vec3 *uv2,
               Vec3 *inten, Vec3 *light_dir, Model *cat);
 
-
-const unsigned width = 3800;
+const unsigned int width = 3800;
 const unsigned int height = 3800;
 const unsigned int depth = 255;
 
 
 int main(int argc, char **argv) {
+    time_t start;
+    time(&start);
 
 
     int rv = 0;
@@ -32,11 +34,7 @@ int main(int argc, char **argv) {
     loadNormalMap(model, argv[4]);
 
 
-    Vec3 screen_coords[3];
-    Vec3 uv_coords[3];
-    Vec3 *uv[3];
-    Vec3 *memory_coords[3];
-    Vec3 *intensive[3];
+
 
     /*
     for(unsigned int i=0; i< width;i++){
@@ -94,53 +92,56 @@ int main(int argc, char **argv) {
     matrixMultuplyMatrixMatrix(&temp, &ModelView, &M);
 
 
+//#pragma omp parallel for
+    for (int k = 0; k < 100; ++k) { //just 4 lulz
 
 
+        for (int i = 0; i < model->nface; i++) {
+            //those are private for each thread
+            Vec3 screen_coords[3];
+            Vec3 uv_coords[3];
+            Vec3 *uv[3];
+            Vec3 *memory_coords[3];
+            Vec3 *intensive[3];
+
+            //printf("face %d of %d\n", i + 1, model->nface);
+            Vec3 inten, sv;
 
 
-    // #pragma omp parallel for
-    // #pragma omp for
-#pragma omp  for
-    for (int i = 0; i < model->nface; i++) {
-
-        printf("face %d of %d\n", i + 1, model->nface);
-        Vec3 inten, sv;
+            for (int j = 0; j < 3; j++) {
+                memory_coords[j] = getVertex(model, i, j);
 
 
-        for (int j = 0; j < 3; j++) {
-            memory_coords[j] = getVertex(model, i, j);
-
-
-            /*
+                /*
              * Vec3f n = (world_coords[1] - world_coords[0]) ^ (world_coords[2] - world_coords[0]); // поменять местами множители
                 n.normalize();
                 освященность?
              */
 
-            /*
+                /*
             (screen_coords[j])[0] = ((*memory_coords[j])[0] + 1.0) * width / 2;
             (screen_coords[j])[1] = ((*memory_coords[j])[1] + 1.0) * height / 2;
             (screen_coords[j])[2] = ((*memory_coords[j])[2] + 1.0) * depth / 2;
              */
 
 
-            //преобразования для поворта камеры
-            Vec4 mv, mv2;
-            transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
-            matrixMultiplyMatrixVec4(&M, &mv, &mv2);
-            transform4D3D(&mv2, &screen_coords[j]);
+                //преобразования для поворта камеры
+                Vec4 mv, mv2;
+                transform3D4D(memory_coords[j], &mv); //[x,y,z] => [x,y,z,1];
+                matrixMultiplyMatrixVec4(&M, &mv, &mv2);
+                transform4D3D(&mv2, &screen_coords[j]);
 
-            //printVec3(&screen_coords[j]);
+                //printVec3(&screen_coords[j]);
 
-            uv[j] = getDiffuseUV(model, i, j);
-            uv_coords[j][0] = (*uv[j])[0];
-            uv_coords[j][1] = (*uv[j])[1];
-            uv_coords[j][2] = (*uv[j])[2];
+                uv[j] = getDiffuseUV(model, i, j);
+                uv_coords[j][0] = (*uv[j])[0];
+                uv_coords[j][1] = (*uv[j])[1];
+                uv_coords[j][2] = (*uv[j])[2];
 
 
-            /*
+                /*
             //преобразовния нормалей для тонировки Гуро
-            //normals transforamtions for Gourand
+            //normals transformations for Gourand
             intensive[j]=getNorm(model, i,j);
             sv[0]=-(*intensive)[j][0];
             sv[1]=-(*intensive)[j][1];
@@ -163,27 +164,33 @@ int main(int argc, char **argv) {
             inten[j]=vectorMultScalar(&sv,&light_dir);
              */
 
+            }
+
+
+            triangle(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2],
+                     &uv_coords[0], &uv_coords[1], &uv_coords[2],
+                     &inten, &light_dir, model);
+
+
+            char str[10];
+            if (i < 0) {
+                sprintf(str, "head%d.tga", i);
+
+                tgaSaveToFile(image, str);
+            }
+
+
         }
-
-
-        triangle(image, zbuffer, &screen_coords[0], &screen_coords[1], &screen_coords[2],
-                 &uv_coords[0], &uv_coords[1], &uv_coords[2],
-                 &inten, &light_dir, model);
-
-
-        char str[10];
-        if (i < 0) {
-            sprintf(str, "head%d.tga", i);
-
-            tgaSaveToFile(image, str);
-        }
-
-
     }
-#pragma omp barrier
+//#pragma omp barrier ???
+
 
 
     tgaFlipVertically(image);
+
+    time_t finish;
+    time(&finish);
+    printf("\ndone in %f sec!\nsaving...", difftime(finish, start));
 
 
     if (-1 == tgaSaveToFile(image, argv[1])) {
@@ -204,7 +211,8 @@ int main(int argc, char **argv) {
     tgaFreeImage(image);
 
     free(zbuffer);
-    printf("\ndone!\n");
+    printf("\ndone!");
+
     return rv;
 }
 
@@ -310,17 +318,15 @@ void triangle(tgaImage *image, double *zbuffer, Vec3 *t0, Vec3 *t1, Vec3 *t2,
                 zbuffer[idx] = P[2];
 
                 tgaColor color;
-#pragma omp critical
-                {
-                    color = getDiffuseColor(cat, &uP);
-                }
+
+                color = getDiffuseColor(cat, &uP);
+
 
                 Vec3 n;
 
-#pragma omp critical
-                {
-                    getNormal(cat, &n, &uP);
-                }
+
+                getNormal(cat, &n, &uP);
+
                 normalize(&n);
                 n[0] *= -1;
                 n[1] *= -1;
